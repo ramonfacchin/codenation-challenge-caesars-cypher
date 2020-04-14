@@ -1,9 +1,8 @@
 #!/usr/bin/python3
 
+import requests
 import hashlib
 import json as JSON
-from requests import Session
-from requests import Request
 
 TOKEN = 'a7529e4702fb24fd168716d6c58c7aea6ac62a2e'
 URL = 'https://api.codenation.dev/v1/challenge/dev-ps/generate-data?token='
@@ -27,6 +26,11 @@ class Desafio:
             self.cifrado, self.numero_casas, True)
         self.resumo_criptografico =\
             hashlib.sha1(self.decifrado.encode('utf-8')).hexdigest()
+        try:
+            f = open('answer.json', 'w')
+            print(str(desafio), file=f)
+        finally:
+            f.close()
 
     def shift_alphabet(self, shift):
         shifted = ALPHABET[shift:]+ALPHABET[:shift]
@@ -47,36 +51,25 @@ class Desafio:
         return JSON.dumps(self.__dict__)
 
 
-def request_challenge(session):
-    req = Request('GET',
-                  URL+TOKEN,
-                  headers={'Content-Type': 'application/json'}).prepare()
-    resp = session.send(req)
+def request_challenge():
+    resp = requests.get(URL+TOKEN)
     desafio = Desafio(resp.json())
     return desafio
 
 
-def post_challenge(session):
-    # resp = requests.post(URL_ANSWER+TOKEN,
-    #                     files={'answer': str(desafio).encode('utf-8')})
-    with open('answer.json') as entrada:
-        req = Request('POST',
-                      URL_ANSWER+TOKEN,
-                      headers={'Content-Type': 'multipart/form-data'},
-                      files={'answer': entrada})
-        print(req.headers)
-        resp = session.send(req.prepare())
-        if resp.status_code == 200:
-            print('success sending. response = {}'.format(resp.content))
-        else:
-            print('error sending. status = {}, response = {}'
-                  .format(resp.status_code, resp.content))
+def post_challenge(desafio):
+    url = URL_ANSWER+TOKEN
+    # url = 'https://httpbin.org/post' # use to test post method
+    resp = requests.post(
+        url, files={'file': ('answer.json', str(desafio).encode())})
+    if resp.status_code == 200:
+        print('success sending. response = {}'.format(resp.content))
+    else:
+        print('error sending. status = {}, response = {}'
+              .format(resp.status_code, resp.content))
 
 
 if __name__ == "__main__":
-    with open('answer.json', 'w') as saida:
-        session = Session()
-        desafio = request_challenge(session)
-        desafio.answer()
-        print(desafio, file=saida)
-        post_challenge(session)
+    desafio = request_challenge()
+    desafio.answer()
+    post_challenge(desafio)
